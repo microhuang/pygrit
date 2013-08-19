@@ -1,0 +1,6 @@
+*.pyc
+*.pyo
+
+*~
+
+src/pygrit.egg-info
