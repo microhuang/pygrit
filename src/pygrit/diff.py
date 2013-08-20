@@ -52,46 +52,63 @@ class Diff:
                                           hunk._hunk_meta.strip(),
                                           'meta'))
 
+            diff_start = False
+            # cache changed line first
+            old_lines = list()
+            new_lines = list()
+
             for old, new, changed in hunk.mdiff():
 
                 if changed:
+                    diff_start = True
                     if not old[0]:
                         # new line
                         line = new[1].strip('\x00\x01')
                         new_lineno = new[0] + hunk._new_addr[0] - 1
                         old_lineno = ""
-                        self.diff += line
-                        self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                      line, 'new'))
+                        new_lines.append((old_lineno, new_lineno,
+                                         line, 'new'))
                     elif not new[0]:
                         # old line
                         line = old[1].strip('\x00\x01')
                         new_lineno = ""
                         old_lineno = old[0] + hunk._old_addr[0] - 1
-                        self.diff += line
-                        self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                      line, 'delete'))
+                        old_lines.append((old_lineno, new_lineno,
+                                         line, 'delete'))
                     else:
                         line = "-" + self._reset_control_chars(old[1])
                         new_lineno = ""
                         old_lineno = old[0] + hunk._old_addr[0] - 1
-                        self.diff += line
-                        self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                      line, 'delete'))
+                        old_lines.append((old_lineno, new_lineno,
+                                         line, 'delete'))
 
                         line = "+" + self._reset_control_chars(new[1])
                         new_lineno = new[0] + hunk._new_addr[0] - 1
                         old_lineno = ""
-                        self.diff += line
-                        self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                      line, 'new'))
+                        new_lines.append((old_lineno, new_lineno,
+                                         line, 'new'))
+
                 else:
+                    if diff_start:
+                        self.diff += "".join(map(lambda x: x[2], old_lines))
+                        self.diff += "".join(map(lambda x: x[2], new_lines))
+                        self.diff_with_lineno.extend(old_lines)
+                        self.diff_with_lineno.extend(new_lines)
+                        diff_start = False
                     old_lineno = old[0] + hunk._old_addr[0] - 1
                     new_lineno = new[0] + hunk._new_addr[0] - 1
                     line = " " + old[1]
                     self.diff += line
                     self.diff_with_lineno.append((old_lineno, new_lineno,
                                                   line, 'match'))
+
+            # when there is changed line only
+            if diff_start:
+                self.diff += "".join(map(lambda x: x[2], old_lines))
+                self.diff += "".join(map(lambda x: x[2], new_lines))
+                self.diff_with_lineno.extend(old_lines)
+                self.diff_with_lineno.extend(new_lines)
+                diff_start = False
 
     def _reset_control_chars(self, line):
         line = line.replace('\x00-', '')
