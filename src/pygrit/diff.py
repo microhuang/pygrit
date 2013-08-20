@@ -49,6 +49,9 @@ class Diff:
 
             self.diff += "".join(hunk._hunk_headers)
             self.diff += hunk._hunk_meta
+            self.diff_with_lineno.append(('...', '...',
+                                          hunk._hunk_meta.strip(),
+                                          'meta'))
 
             diff_start = False
             old_lines = list()
@@ -58,31 +61,32 @@ class Diff:
                 if flag:
                     diff_start = True
                     if from_line[0]:
-                        old_line = from_line[1].lstrip("\0").rstrip("\1") \
-                                                            .strip() + "\n"
+                        old_line = from_line[1].lstrip("\0").rstrip("\1\n") \
+                                   + "\n"
                         old_lineno = from_line[0] + hunk._old_addr[0] - 1
                         new_lineno = ""
                         self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                      old_line.strip()))
+                                                      old_line.strip(),
+                                                      'delete'))
                         old_lines.append(old_line)
                     if to_line[0]:
-                        new_line = to_line[1].lstrip("\0").rstrip("\1") \
-                                                          .strip() + "\n"
+                        new_line = to_line[1].lstrip("\0").rstrip("\1\n") \
+                                                          + "\n"
                         old_lineno = ""
                         new_lineno = to_line[0] + hunk._new_addr[0] - 1
                         self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                      new_line.strip()))
+                                                      new_line.strip(), 'new'))
                         new_lines.append(new_line)
                 else:
                     if diff_start:
                         self.diff += "".join(old_lines)
                         self.diff += "".join(new_lines)
                         diff_start = False
-                    line = to_line[1].replace("\1", "").strip() + "\n"
+                    line = to_line[1].rstrip("\1\n") + "\n"
                     old_lineno = from_line[0] + hunk._old_addr[0] - 1
                     new_lineno = to_line[0] + hunk._new_addr[0] - 1
                     self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                  line.strip()))
+                                                  line.strip(), 'match'))
                     self.diff += " " + line
 
                 if diff_start:
