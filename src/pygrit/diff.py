@@ -47,49 +47,55 @@ class Diff:
         # https://gist.github.com/aleiphoenix/6276707
         for hunk in self.raw_diff._hunks:
 
-            self.diff += "".join(hunk._hunk_headers)
             self.diff += hunk._hunk_meta
             self.diff_with_lineno.append(('...', '...',
                                           hunk._hunk_meta.strip(),
                                           'meta'))
 
-            diff_start = False
-            old_lines = list()
-            new_lines = list()
+            for old, new, changed in hunk.mdiff():
 
-            for from_line, to_line, flag in hunk.mdiff():
-                if flag:
-                    diff_start = True
-                    if from_line[0]:
-                        old_line = from_line[1].lstrip("\0").rstrip("\1\n") \
-                                   + "\n"
-                        old_lineno = from_line[0] + hunk._old_addr[0] - 1
-                        new_lineno = ""
-                        self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                      old_line.strip(),
-                                                      'delete'))
-                        old_lines.append(old_line)
-                    if to_line[0]:
-                        new_line = to_line[1].lstrip("\0").rstrip("\1\n") \
-                                                          + "\n"
+                if changed:
+                    if not old[0]:
+                        # new line
+                        line = new[1].strip('\x00\x01')
+                        new_lineno = new[0] + hunk._new_addr[0] - 1
                         old_lineno = ""
-                        new_lineno = to_line[0] + hunk._new_addr[0] - 1
+                        self.diff += line
                         self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                      new_line.strip(), 'new'))
-                        new_lines.append(new_line)
-                else:
-                    if diff_start:
-                        self.diff += "".join(old_lines)
-                        self.diff += "".join(new_lines)
-                        diff_start = False
-                    line = to_line[1].rstrip("\1\n") + "\n"
-                    old_lineno = from_line[0] + hunk._old_addr[0] - 1
-                    new_lineno = to_line[0] + hunk._new_addr[0] - 1
-                    self.diff_with_lineno.append((old_lineno, new_lineno,
-                                                  line.strip(), 'match'))
-                    self.diff += " " + line
+                                                      line, 'new'))
+                    elif not new[0]:
+                        # old line
+                        line = old[1].strip('\x00\x01')
+                        new_lineno = ""
+                        old_lineno = old[0] + hunk._old_addr[0] - 1
+                        self.diff += line
+                        self.diff_with_lineno.append((old_lineno, new_lineno,
+                                                      line, 'delete'))
+                    else:
+                        line = "-" + self._reset_control_chars(old[1])
+                        new_lineno = ""
+                        old_lineno = old[0] + hunk._old_addr[0] - 1
+                        self.diff += line
+                        self.diff_with_lineno.append((old_lineno, new_lineno,
+                                                      line, 'delete'))
 
-                if diff_start:
-                    self.diff += "".join(old_lines)
-                    self.diff += "".join(new_lines)
-                    diff_start = False
+                        line = "+" + self._reset_control_chars(new[1])
+                        new_lineno = new[0] + hunk._new_addr[0] - 1
+                        old_lineno = ""
+                        self.diff += line
+                        self.diff_with_lineno.append((old_lineno, new_lineno,
+                                                      line, 'new'))
+                else:
+                    old_lineno = old[0] + hunk._old_addr[0] - 1
+                    new_lineno = new[0] + hunk._new_addr[0] - 1
+                    line = " " + old[1]
+                    self.diff += line
+                    self.diff_with_lineno.append((old_lineno, new_lineno,
+                                                  line, 'match'))
+
+    def _reset_control_chars(self, line):
+        line = line.replace('\x00-', '')
+        line = line.replace('\x00+', '')
+        line = line.replace('\x00^', '')
+        line = line.replace('\x01', '')
+        return line
