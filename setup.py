@@ -16,7 +16,9 @@ setup(
 
     entry_points = {},
 
-    install_requires = [],
+    install_requires = [
+        "cdiff==0.9.2"
+    ],
 
     author = "AR",
     description = ("pygrit intends to provide a minimal"
