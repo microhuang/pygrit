@@ -64,8 +64,13 @@ class Commit:
     @property
     @cached
     def diffs(self):
-        parent = self.parents_id[0]
-        raw_diff = self.repo.git.get_diff(parent, self.id)
+        if len(self.parents_id) > 0:
+            parent = self.parents_id[0]
+            raw_diff = self.repo.git.get_diff(parent, self.id)
+        else:
+            raw_diff = self.repo.git.diff_tree(self.id, p=True, r=True,
+                                               no_commit_id=True,
+                                               encoding='utf-8', root=True)
 
         diff_hdl = StringIO(raw_diff)
         stream = PatchStream(diff_hdl)

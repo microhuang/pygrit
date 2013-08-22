@@ -83,6 +83,9 @@ class Git:
         return result_dict
 
     def _run_command(self, command, cwd):
+        """
+        TODO: try best to avoid running command thru shell
+        """
         p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, cwd=cwd)
         stdout, stderr = p.communicate()
@@ -90,3 +93,48 @@ class Git:
         if ret != 0:
             raise OSError("git command cannot run")
         return stdout, stderr
+
+    def _options_to_argv(self, options):
+        argv = list()
+        for o in options:
+            if len(str(o)) == 1:
+                # short option
+                if options[o] == True:
+                    argv.append("-%s" % o)
+                elif options[o] == False:
+                    # just ignore
+                    pass
+                else:
+                    argv.append("-%s %s" % (o, options[o]))
+            else:
+                # long opton
+                if options[o] == True:
+                    argv.append("--%s" % (str(o).replace("_", "-")) )
+                elif options[o] == False:
+                    # just ignore
+                    pass
+                else:
+                    argv.append("--%s=%s" % (str(o).replace("_", "-"),
+                                             options[o]) )
+        return argv
+
+    def _native(self, cmd, *args, **options):
+        """
+        git binary call
+        """
+        # TODO: check security vunenrable problems
+        opts = self._options_to_argv(options)
+        args = "".join(map(lambda x: str(x), args))
+        command = "git %s %s %s" % (cmd.replace("_", "-"), " ".join(opts), args)
+
+        # TODO: add logger for command debugging
+        stdout, stderr = self._run_command(command, self.working_dir)
+
+        return stdout
+
+    def __getattr__(self, name):
+        """
+        magic method missing call to native git binary
+        """
+        return lambda *args, **options: \
+                               self._native(name, *args, **options)
