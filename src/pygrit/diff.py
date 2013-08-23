@@ -94,6 +94,8 @@ class Diff:
                         self.diff += "".join(map(lambda x: x[2], new_lines))
                         self.diff_with_lineno.extend(old_lines)
                         self.diff_with_lineno.extend(new_lines)
+                        old_lines = list()
+                        new_lines = list()
                         diff_start = False
                     old_lineno = old[0] + hunk._old_addr[0] - 1
                     new_lineno = new[0] + hunk._new_addr[0] - 1
