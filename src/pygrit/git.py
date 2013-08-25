@@ -3,6 +3,9 @@
 import os
 import re
 import subprocess
+from glob import glob
+
+from pygrit import logger
 
 #
 # class to interactive with `git` binary
@@ -14,17 +17,16 @@ class Git:
 
     ENCODING_PROCESS_NEEDED = ["author_name", "committer_name", "message"]
 
-    def __init__(self, working_dir, default_branch='master'):
-        if not os.path.exists(os.path.abspath(working_dir)):
-            raise OSError("no such path")
-        self.working_dir = working_dir
+    def __init__(self, git_dir):
+        self.git_dir = git_dir
+        self.work_tree = re.sub(r"\/\.git$", "", git_dir)
 
     def get_commit(self, commit_id):
         """
         parse commit raw content to a dict
         """
         command = "git cat-file -p %s" % commit_id
-        stdout, stderr = self._run_command(command, cwd=self.working_dir)
+        stdout, stderr = self._run_command(command, cwd=self.work_tree)
 
         result = dict()
         result['id'] = commit_id
@@ -73,9 +75,35 @@ class Git:
 
         command = "git diff %s %s" % (src, dst)
 
-        stdout, stderr = self._run_command(command, cwd=self.working_dir)
+        stdout, stderr = self._run_command(command, cwd=self.work_tree)
 
         return stdout
+
+    def refs(self, options, prefix):
+        """
+        return git refs list, line by line
+        """
+        refs = list()
+        already = dict()
+        os.chdir(self.git_dir)
+        files = glob("%s/*" % prefix)
+        for ref in files:
+            if not os.path.isfile(ref):
+                continue
+            with open(ref) as f:
+                id = f.read().strip()
+            name = ref.replace(prefix + "/", "")
+            if name not in already.keys():
+                already[name] = True
+                refs.append("%s %s" % (name, id))
+
+        # TODO: check packed-refs
+
+        return "\n".join(refs)
+
+    def fs_mkdir(self, dir):
+        command = "mkdir -p %s/%s" % (self.git_dir, dir)
+        self._run_command(command, self.work_tree)
 
     def _process_encoding(self, result_dict):
         for k in self.ENCODING_PROCESS_NEEDED:
@@ -86,12 +114,13 @@ class Git:
         """
         TODO: try best to avoid running command thru shell
         """
+        logger.debug(command)
         p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, cwd=cwd)
         stdout, stderr = p.communicate()
         ret = p.returncode
         if ret != 0:
-            raise OSError("git command cannot run")
+            raise OSError("git command cannot run: %s" % command)
         return stdout, stderr
 
     def _options_to_argv(self, options):
@@ -124,11 +153,12 @@ class Git:
         """
         # TODO: check security vunenrable problems
         opts = self._options_to_argv(options)
-        args = "".join(map(lambda x: str(x), args))
+        args = " ".join(map(lambda x: str(x), args))
         command = "git %s %s %s" % (cmd.replace("_", "-"), " ".join(opts), args)
+        logger.debug(command)
 
         # TODO: add logger for command debugging
-        stdout, stderr = self._run_command(command, self.working_dir)
+        stdout, stderr = self._run_command(command, self.work_tree)
 
         return stdout
 

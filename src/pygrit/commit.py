@@ -4,12 +4,12 @@ from datetime import datetime
 
 from cdiff import PatchStream, DiffParser
 
-from .diff import Diff
-from .utils.wrappers import cached
+from pygrit.diff import Diff
+from pygrit.utils.wrappers import cached
 
 
 
-class Commit:
+class Commit(object):
 
     def __init__(self, raw_commit, head=None):
         if not raw_commit:
@@ -81,3 +81,13 @@ class Commit:
             result.append(Diff(diff))
 
         return result
+
+    @staticmethod
+    def create(repo, **attrs):
+        """
+        create a unbaked Commit instance, without init routine
+        """
+        commit = Commit.__new__(Commit)
+        for k in attrs:
+            setattr(commit, k, attrs[k])
+        return commit
