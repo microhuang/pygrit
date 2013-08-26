@@ -7,18 +7,21 @@ currently working on diff and commit objects.
 ## usage
 
 ```python
-from pygrit.repo import Repo
+>>> from pygrit.repo import Repo
+>>> repo = Repo('/path/to/repository')
+>>> repo
+<pygrit.repo.Repo /path/to/repository/.git>
 
-# specify repos root path
-Repo.repos_path
+>>> Repo.commit('master')
+<pygrit.commit.Commit d5714a4bd2b5103ff15d964260b9b69d0642f491>
+>>> Repo.commit('d5714a4bd2b5103ff15d964260b9b69d0642f491')
+<pygrit.commit.Commit d5714a4bd2b5103ff15d964260b9b69d0642f491>
 
-# Repo.repos_path + 'path/to/repository'
-repo = Repo('path/to/repository')
+>>> commit = Repo.commit('master')
 
-commit = Repo.commit(':commit_id') # currently only support sha1
-
-for diff in commit.diffs:
-    print diff.__dict__ # check properties
+>>> # check properties
+>>> for diff in commit.diffs:
+...     print diff.__dict__
 ```
 
 + `diff_with_lineno`, old_lineno, new_lineno, and line text now available.

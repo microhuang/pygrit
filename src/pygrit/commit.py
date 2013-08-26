@@ -1,25 +1,107 @@
 # -*- coding: utf-8 -*-
 from StringIO import StringIO
+from collections import deque
 from datetime import datetime
+import re
 
 from cdiff import PatchStream, DiffParser
 
+from pygrit import logger
 from pygrit.diff import Diff
+from pygrit.utils.lazy import Lazy, lazyprop
 from pygrit.utils.wrappers import cached
 
 
+class Commit(Lazy):
 
-class Commit(object):
+    def __init__(self, repo, id, parents, tree, author, author_email,
+                 authored_timestamp, authored_offset, committer,
+                 committer_email, committed_timestamp,committed_offset,
+                 message):
+        """
+        Instantiate a new Commit
 
-    def __init__(self, raw_commit, head=None):
-        if not raw_commit:
-            raise StandardError("None as raw commit passwd")
-
-        self._init_from_raw(raw_commit)
+        Args:
+            id: is the id of the commit
+            parents: is an array of commit ids
+            tree: is the correspdonding tree id
+            author: is the author string
+            author_email: is the author_email string
+            authored_timestamp: is the authored_timestamp
+            authored_offset: is the authored_offset (seconds)
+            committer: is the committer string
+            committer_email: is the committer_email string
+            committed_timestamp: is the committed_timestamp
+            committed_offset: is the committed_offset (seconds)
+            message: is the message string
+        """
         self._diffs = None
 
-        self.head = head
-        self.repo = None
+        self.repo = repo
+        self.id = id
+        self._message = "\n".join(message)
+
+        for line in message:
+            if line:
+                self._short_message = line
+                break
+        self._parents = map(lambda id: Commit.create(repo, id=id), parents)
+        self._author_name = author
+        self._author_email = author_email
+        self._authored_timestamp = int(authored_timestamp)
+        self._authored_offset = self._convert_offset(authored_offset)
+        self._committer_name = committer
+        self._committer_email = committer_email
+        self._committed_timestamp = int(committed_timestamp)
+        self._committed_offset = self._convert_offset(committed_offset)
+
+    @lazyprop
+    def parents(self):
+        return self.parents
+
+    @lazyprop
+    def tree(self):
+        return self.tree
+
+    @lazyprop
+    def author_name(self):
+        return self._author_name
+
+    @lazyprop
+    def author_email(self):
+        return self._author_email
+
+    @lazyprop
+    def authored_timestamp(self):
+        return self._authored_timestamp
+
+    @lazyprop
+    def authored_offset(self):
+        return self._authored_offset
+
+    @lazyprop
+    def committer_name(self):
+        return self._committer_name
+
+    @lazyprop
+    def committer_email(self):
+        return self._committer_email
+
+    @lazyprop
+    def committed_timestamp(self):
+        return self._committed_timestamp
+
+    @lazyprop
+    def committed_offset(self):
+        return self._committed_offset
+
+    @lazyprop
+    def message(self):
+        return self._message
+
+    @lazyprop
+    def short_message(self):
+        return self._short_message
 
     @property
     def authored_datetime(self):
@@ -33,26 +115,6 @@ class Commit(object):
     def datetime(self):
         return self.committed_timestamp
 
-    def _init_from_raw(self, raw_commit):
-        """
-        init from result of Git.get_commit(), a dict
-        """
-        self._raw_commit = raw_commit
-        self.id = raw_commit['id']
-        self.message = raw_commit['message']
-        self.author_name = raw_commit['author_name']
-        self.author_email = raw_commit['author_email']
-        self.authored_timestamp = int(raw_commit['authored_timestamp'])
-        self.authored_offset = int(raw_commit['authored_offset'])
-        self.committer_name = raw_commit['committer_name']
-        self.committer_email = raw_commit['committer_email']
-        self.committed_timestamp = int(raw_commit['committed_timestamp'])
-        self.committed_offset = int(raw_commit['committed_offset'])
-        self.parents_id = map(lambda x: x, raw_commit['parents'])
-
-    def __repr__(self):
-        return "<gitcorp_git.commit.Commit %s>" % self.id
-
     @property
     def sha(self):
         return self.id
@@ -64,8 +126,8 @@ class Commit(object):
     @property
     @cached
     def diffs(self):
-        if len(self.parents_id) > 0:
-            parent = self.parents_id[0]
+        if len(self.parents) > 0:
+            parent = self.parents[0].id
             raw_diff = self.repo.git.get_diff(parent, self.id)
         else:
             raw_diff = self.repo.git.diff_tree(self.id, p=True, r=True,
@@ -82,12 +144,147 @@ class Commit(object):
 
         return result
 
+    def lazy_source(self):
+        return self.find_all(self.repo, self.id, max_count=1)[0]
+
     @staticmethod
     def create(repo, **attrs):
         """
         create a unbaked Commit instance, without init routine
         """
         commit = Commit.__new__(Commit)
+        commit.repo = repo
         for k in attrs:
             setattr(commit, k, attrs[k])
+        setattr(commit, "_loaded", False)
         return commit
+
+    @staticmethod
+    def find_all(repo, ref, **options):
+        """
+        Find all commits matching the given criteria
+
+        Args:
+            repo: is the Repo
+            ref: is the ref from which to begin (SHA1 or name) or None for --all
+            options:
+                max_count: is the maximum number of commits to fetch
+                skip: is the number of commits to skip
+
+        Returns:
+            pygrit.commit.Commit[] (baked)
+        """
+        options['pretty'] = 'raw'
+        if ref:
+            output = repo.git.rev_list(ref, **options)
+        else:
+            options['all'] = True
+            output = repo.git.rev_list(ref, **options)
+
+        return Commit.list_from_string(repo, output)
+
+    @staticmethod
+    def list_from_string(repo, text):
+        """
+        Parse out commit information into an array of baked Commit objects
+
+        Args:
+            repo: is the Repo
+            text: is the text output from the git command (raw format)
+
+        Returns:
+            pygrit.commit.Commit[] (baked)
+        """
+        text_gpgless = re.sub(r'gpgsig -----BEGIN PGP SIGNATURE-----[\n\r]'
+                              r'(.*[\n\r])*? -----END PGP SIGNATURE-----[\n\r]',
+                              "", text)
+        lines = deque(text_gpgless.split("\n"))
+        commits = list()
+
+        while len(lines) > 0:
+            # Skip all garbage unless we get real commit
+            if not re.match(r'^commit [a-zA-Z0-9]*$', lines[0]):
+                lines.popleft()
+
+            parts = lines.popleft().split()
+            id = parts[len(parts) - 1]
+            parts = lines.popleft().split()
+            tree = parts[len(parts) - 1]
+
+            parents = list()
+            while re.match(r'^parent', lines[0]):
+                parts = lines.popleft().split()
+                parents.append(parts[len(parts) - 1])
+
+            author_line = lines.popleft()
+            while not re.match(r'^committer', lines[0]):
+                author_line += lines.popleft()
+            author, author_email, \
+                authored_timestamp, authored_offset = Commit.actor(author_line)
+
+            # TODO: locale get from ENV
+            author = author.decode('UTF-8')
+
+            committer_line = lines.popleft()
+            while lines[0] and (not re.match(r'^encoding', lines[0])) and \
+                  (not re.match(r'^encoding', lines[0])):
+                committer_line += lines.popleft()
+            committer, committer_email, \
+                committed_timestamp, \
+                committed_offset = Commit.actor(committer_line)
+
+            # TODO: locale get from ENV
+            committer = committer.decode('UTF-8')
+
+            # not using here though
+            if re.match(r'^encoding', lines[0]):
+                parts = lines.popleft().split()
+                encoding = parts[len(parts) - 1]
+
+            # Skip signature and other raw data
+            while re.match(r'^ ', lines[0]):
+                lines.popleft()
+
+            lines.popleft()
+
+            message_lines = list()
+            while re.match(r'^ {4}', lines[0]):
+                # TODO: locale get from ENV
+                message_lines.append(lines.popleft()[4:].decode('UTF-8'))
+
+            while len(lines) > 0 and lines[0] == "":
+                lines.popleft()
+
+            commit = Commit(repo, id, parents, tree, author, author_email,
+                            authored_timestamp, authored_offset, committer,
+                            committer_email, committed_timestamp,
+                            committed_offset, message_lines)
+            commits.append(commit)
+
+        return commits
+
+    @staticmethod
+    def actor(line):
+        m = re.match(r'.+? (.+) \<(.+)\> (\d+) (.*)$', line)
+        if m:
+            return m.groups()
+
+    def _convert_offset(self, offset):
+        """
+        convert offset string to minutes
+
+        Args:
+            offset: is the offset string, like '+0800'
+
+        Returns:
+            offset minutes, for example: -480
+        """
+        direction = offset[0]
+        hours = int(offset[1:3])
+        mins = int(offset[3:5])
+        if direction == "-":
+            return (hours * 60 + mins) * -1
+        return hours * 60 + mins
+
+    def __repr__(self):
+        return "<pygrit.commit.Commit %s>" % self.id

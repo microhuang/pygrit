@@ -118,3 +118,26 @@ class Diff:
         line = line.replace('\x00^', '')
         line = line.replace('\x01', '')
         return line
+
+    @staticmethod
+    def list_from_string(raw_diff):
+        """
+        convert git raw_diff format to Diff instances
+
+        Args:
+            raw_diff: is the utf-8 encoded diff raw string
+
+        Returns:
+            pygrit.diff.Diff[]
+        """
+        # TODO: maybe implement this from scratch ?
+        if type(raw_diff) == unicode:
+            raw_diff = raw_diff.encode('UTF-8')
+        diff_hdl = StringIO(raw_diff)
+        stream = PatchStream(diff_hdl)
+        diffs = DiffParser(stream).get_diff_generator()
+
+        result = list()
+        for diff in diffs:
+            result.append(Diff(diff))
+        return result

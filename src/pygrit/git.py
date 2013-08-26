@@ -128,18 +128,18 @@ class Git:
         for o in options:
             if len(str(o)) == 1:
                 # short option
-                if options[o] == True:
+                if type(options[o]) == bool and options[o]:
                     argv.append("-%s" % o)
-                elif options[o] == False:
+                elif type(options[o]) == bool and options[o] == False:
                     # just ignore
                     pass
                 else:
                     argv.append("-%s %s" % (o, options[o]))
             else:
                 # long opton
-                if options[o] == True:
+                if type(options[o]) == bool and options[o]:
                     argv.append("--%s" % (str(o).replace("_", "-")) )
-                elif options[o] == False:
+                elif type(options[o]) == bool and options[o] == False:
                     # just ignore
                     pass
                 else:
@@ -155,9 +155,7 @@ class Git:
         opts = self._options_to_argv(options)
         args = " ".join(map(lambda x: str(x), args))
         command = "git %s %s %s" % (cmd.replace("_", "-"), " ".join(opts), args)
-        logger.debug(command)
 
-        # TODO: add logger for command debugging
         stdout, stderr = self._run_command(command, self.work_tree)
 
         return stdout

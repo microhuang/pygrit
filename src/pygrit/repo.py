@@ -102,13 +102,8 @@ class Repo():
             return mb.strip()
 
     def commit(self, commit_id):
-        # TODO: commit_id should also allow refs name, branch, tag
-        if not re.match(r"[0-9a-fA-F]{40}", commit_id):
-            raise NotImplementedError("not support refs name currenly.")
-        result = self.git.get_commit(commit_id)
-        commit = self._decorate_commit(result)
-        commit.repo = self
-        return commit
+        options = {'max_count': 1}
+        return Commit.find_all(self, commit_id, **options)[0]
 
-    def _decorate_commit(self, commit, ref=None):
-        return Commit(commit, ref)
+    def __repr__(self):
+        return "<pygrit.repo.Repo %s>" % self.path
