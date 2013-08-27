@@ -1,7 +1,10 @@
+* 2013/08/27
+
+  add commits fcuntion to Repo
+
 * 2013/08/26
 
   make Commit a lazy class
-
 
 * 2013/08/25
 

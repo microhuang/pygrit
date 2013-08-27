@@ -102,8 +102,31 @@ class Repo():
             return mb.strip()
 
     def commit(self, commit_id):
+        """
+        The Commit object for the specified id
+
+        Args:
+            id: is the SHA1 identifier of the commit
+
+        Returns:
+            Grit::Commit (baked)
+        """
         options = {'max_count': 1}
         return Commit.find_all(self, commit_id, **options)[0]
+
+    def commits(self, start='master', max_count=10, skip=0):
+        """
+        An array of Commit object representing the history of a given ref/commit
+
+        Args:
+            start is the branch/commit name (default 'master')
+            max_count: is the maximum number of commits to return (default 10, use False for all)
+            skip: is the number of commits to skip (default 0)
+
+        Returns:
+            Grit::Commit[]
+        """
+        return Commit.find_all(self, start, max_count=max_count, skip=skip)
 
     def __repr__(self):
         return "<pygrit.repo.Repo %s>" % self.path

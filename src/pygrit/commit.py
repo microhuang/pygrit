@@ -35,6 +35,7 @@ class Commit(Lazy):
             committed_offset: is the committed_offset (seconds)
             message: is the message string
         """
+        super(Commit, self).__init__()
         self._diffs = None
 
         self.repo = repo
@@ -112,8 +113,12 @@ class Commit(Lazy):
         return datetime.fromtimestamp(self.committed_timestamp)
 
     @property
-    def datetime(self):
+    def timestamp(self):
         return self.committed_timestamp
+
+    @property
+    def datetime(self):
+        return datetime.fromtimestamp(self.committed_timestamp)
 
     @property
     def sha(self):
@@ -203,8 +208,11 @@ class Commit(Lazy):
 
         while len(lines) > 0:
             # Skip all garbage unless we get real commit
-            if not re.match(r'^commit [a-zA-Z0-9]*$', lines[0]):
+            while len(lines) > 0 and \
+                  (not re.match(r'^commit [a-zA-Z0-9]*$', lines[0])):
                 lines.popleft()
+            if len(lines) <= 0:
+                break
 
             parts = lines.popleft().split()
             id = parts[len(parts) - 1]

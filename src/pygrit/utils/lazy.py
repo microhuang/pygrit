@@ -16,6 +16,7 @@ def lazyprop(fn):
             obj = inst.lazy_source()
             inst.__dict__.update(obj.__dict__)
             # setattr(inst, '_loaded', True)
+            inst._loaded = True
         return getattr(inst, attr_name)
 
     return _lazyprop
