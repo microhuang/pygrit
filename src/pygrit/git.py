@@ -97,7 +97,18 @@ class Git:
                 already[name] = True
                 refs.append("%s %s" % (name, id))
 
-        # TODO: check packed-refs
+        packed = "%s/%s" % (self.git_dir, 'packed-refs')
+        if os.path.isfile(packed):
+            with open(packed) as p:
+                for line in p:
+                    m = re.match(r'^(\w{40}) (.*?)$', line)
+                    if m:
+                        if not re.match(r'^' + prefix, m.group(2)):
+                            continue
+                        name = m.group(2).replace("%s/" % prefix, "")
+                        if name not in already.keys():
+                            already[name] = True
+                        refs.append("%s %s" % (name, m.group(1)))
 
         return "\n".join(refs)
 
