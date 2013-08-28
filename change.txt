@@ -1,3 +1,7 @@
+* 2013/08/28
+
+  add head and set_head to Repo
+
 * 2013/08/27
 
   add commits fcuntion to Repo

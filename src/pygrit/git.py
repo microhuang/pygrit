@@ -131,7 +131,8 @@ class Git:
         stdout, stderr = p.communicate()
         ret = p.returncode
         if ret != 0:
-            raise OSError("git command cannot run: %s" % command)
+            raise OSError("git command cannot run: %s ; reason: %s" % \
+                          (command, stderr))
         return stdout, stderr
 
     def _options_to_argv(self, options):

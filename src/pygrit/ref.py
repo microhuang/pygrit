@@ -1,13 +1,23 @@
 # -*- coding: utf-8 -*-
+import re
+
 from pygrit import logger
 from pygrit.commit import Commit
 
 
 class Ref(object):
 
-    def __init__(self, name, commit):
+    def __init__(self, name, repo, commit_id):
         self.name = name
-        self.commit = commit
+        self.commit_id = commit_id
+        self.repo_ref = repo
+
+    @property
+    def commit(self):
+        return self.get_commit()
+
+    def get_commit(self):
+        return Commit.create(self.repo_ref, id=self.commit_id)
 
     @classmethod
     def _prefix(klass):
@@ -19,8 +29,7 @@ class Ref(object):
         refs = repo.git.refs(options, klass._prefix())
         def map_ref(ref):
             name, id = ref.split(' ')
-            commit = Commit.create(repo, id=id)
-            return klass(name, commit)
+            return klass(name, repo, id)
         return map(map_ref, refs.split("\n"))
 
     def __repr__(self):
@@ -29,7 +38,17 @@ class Ref(object):
 
 
 class Head(Ref):
-    pass
+
+    @staticmethod
+    def current(repo, **options):
+        head = repo.git.symbolic_ref('HEAD')
+        m = re.match(r'refs\/heads\/(.*)', head)
+        if m:
+            head = m.group(1)
+            id = repo.git.rev_parse('HEAD', **options)
+            if id:
+                id = id.strip()
+            return Head(head, repo, id)
 
 class Remote(Ref):
     pass

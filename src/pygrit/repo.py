@@ -75,6 +75,26 @@ class Repo():
         """
         return Head.find_all(self)
 
+    def head(self):
+        """
+        return the current head
+        """
+        return Head.current(self)
+
+    def set_head(self, head):
+        """
+        set head
+
+        Args:
+            head: is the head to set
+        """
+        try:
+            self.git.symbolic_ref("HEAD", "refs/heads/%s" % head)
+            return True
+        except OSError:
+            import traceback
+            logger.error(traceback.format_exc())
+            return False
 
     @cached
     def diff(self, a, b, raw=False):
