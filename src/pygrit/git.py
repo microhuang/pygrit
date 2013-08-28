@@ -108,8 +108,7 @@ class Git:
                         name = m.group(2).replace("%s/" % prefix, "")
                         if name not in already.keys():
                             already[name] = True
-                        refs.append("%s %s" % (name, m.group(1)))
-
+                            refs.append("%s %s" % (name, m.group(1)))
         return "\n".join(refs)
 
     def fs_mkdir(self, dir):
