@@ -148,5 +148,20 @@ class Repo():
         """
         return Commit.find_all(self, start, max_count=max_count, skip=skip)
 
+    def log(self, commit='master', path=None, **options):
+        """
+        The commit log for a treeish
+
+        Returns:
+            pygrit.commit.Commit[]
+        """
+        options['pretty'] = 'raw'
+        if path:
+            arg = [commit, '--', path]
+        else:
+            arg = [commit]
+        commits = self.git.log(*arg, **options)
+        return Commit.list_from_string(self, commits)
+
     def __repr__(self):
         return "<pygrit.repo.Repo %s>" % self.path

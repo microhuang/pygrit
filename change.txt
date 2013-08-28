@@ -1,6 +1,7 @@
 * 2013/08/28
 
   add head and set_head to Repo
+  add log to repo
 
 * 2013/08/27
 
