@@ -27,10 +27,12 @@ class Ref(object):
     @classmethod
     def find_all(klass, repo, **options):
         refs = repo.git.refs(options, klass._prefix())
-        def map_ref(ref):
-            name, id = ref.split(' ')
-            return klass(name, repo, id)
-        return map(map_ref, refs.split("\n"))
+        ret = list()
+        for ref in refs.split("\n"):
+            if ref:
+                name, id = ref.split(' ')
+                ret.append(klass(name, repo, id))
+        return ret
 
     def __repr__(self):
         classname = self.__class__.__name__.lower()
