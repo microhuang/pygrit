@@ -41,7 +41,7 @@ class Commit(Lazy):
         self.repo = repo
         self.id = id
         self._message = "\n".join(message)
-
+        self._short_message = None
         for line in message:
             if line:
                 self._short_message = line
