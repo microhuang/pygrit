@@ -89,7 +89,8 @@ class Repo():
             head: is the head to set
         """
         try:
-            self.git.symbolic_ref("HEAD", "refs/heads/%s" % head)
+            self.git.symbolic_ref("HEAD", "refs/heads/%s" % head,
+                                  raise_error=True)
             return True
         except OSError:
             import traceback

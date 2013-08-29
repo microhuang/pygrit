@@ -6,67 +6,18 @@ import subprocess
 from glob import glob
 
 from pygrit import logger
+from pygrit.utils.wrappers import deprecated, should_in_git_python
 
 #
 # class to interactive with `git` binary
 #
 class Git:
 
-    # TODO: get from locale
-    LOCALE_ENCODING = "UTF-8"
-
-    ENCODING_PROCESS_NEEDED = ["author_name", "committer_name", "message"]
-
     def __init__(self, git_dir):
         self.git_dir = git_dir
         self.work_tree = re.sub(r"\/\.git$", "", git_dir)
 
-    def get_commit(self, commit_id):
-        """
-        parse commit raw content to a dict
-        """
-        command = "git cat-file -p %s" % commit_id
-        stdout, stderr = self._run_command(command, cwd=self.work_tree)
-
-        result = dict()
-        result['id'] = commit_id
-        result['parents'] = list()
-        header, body = stdout.split("\n\n", 1)
-        for line in header.split("\n"):
-            if line.startswith("tree"):
-                result['tree'] = line.split(" ")[1]
-            if line.startswith("parent"):
-                result['parents'].append(line.split(" ")[1])
-            if line.startswith("author"):
-                match = re.match(r'author\s'
-                                 '(?P<author>.+)\s'
-                                 '\<(?P<email>.+)\>\s'
-                                 '(?P<timestamp>[0-9]+)\s'
-                                 '(?P<offset>.+)', line)
-                if match:
-                    grp = match.groupdict()
-                    result['author_name'] = grp['author']
-                    result['author_email'] = grp['email']
-                    result['authored_timestamp'] = grp['timestamp']
-                    result['authored_offset'] = grp['offset']
-            if line.startswith("committer"):
-                match = re.match(r'committer\s'
-                                 '(?P<committer>.+)\s'
-                                 '\<(?P<email>.+)\>\s'
-                                 '(?P<timestamp>[0-9]+)\s'
-                                 '(?P<offset>.+)', line)
-                if match:
-                    grp = match.groupdict()
-                    result['committer_name'] = grp['committer']
-                    result['committer_email'] = grp['email']
-                    result['committed_timestamp'] = grp['timestamp']
-                    result['committed_offset'] = grp['offset']
-
-            result['message'] = body
-
-        result = self._process_encoding(result)
-        return result
-
+    @deprecated
     def get_diff(self, src, dst):
 
         if not dst:
@@ -79,6 +30,7 @@ class Git:
 
         return stdout
 
+    @should_in_git_python
     def refs(self, options, prefix):
         """
         return git refs list, line by line
@@ -111,25 +63,85 @@ class Git:
                             refs.append("%s %s" % (name, m.group(1)))
         return "\n".join(refs)
 
+    @should_in_git_python
+    def rev_list(self, *refs, **options):
+        if not refs:
+            refs = ['master']
+        if options['skip'] == 0:
+            options.pop('skip')
+        allowed_options = ['max_count', 'snice', 'until', 'pretty']
+        if len(set(options.keys()) - set(allowed_options)) > 0 or len(refs) > 1:
+            return self.__getattr__('rev-list')(*refs, **options)
+        elif len(options) == 0:
+            ref = refs[0]
+            # "\n".join(file_index.commits_from(self.rev_parse(ref))) + "\n"
+            return self.__getattr__('rev-list')(*refs, **options)
+        else:
+            ref = refs[0]
+            aref = self.rev_parse(ref, verify=True)
+            # if type(aref) == list:
+            # TODO: implemented by git-python
+            return self.__getattr__('rev-list')(*refs, **options)
+
+    @should_in_git_python
+    def rev_parse(self, string, **options):
+        if type(string) not in (str, unicode):
+            raise RuntimeError('invalid string %s' % string.__repr__())
+
+        # Split ranges, but don't split when specifiying a ref:path.
+        # Don't split HEAD:some/path/in/repo..txt
+        # Do split sha1..sha2
+        if not re.search(r':', string) and re.search(r'\.\.', string):
+            sha1, sha2 = string.split("..")
+            return [self.rev_parse({}, sha1), slef.rev_parse({}, sha2)]
+
+        if re.match(r'^[0-9a-f]{40}$', string):
+            return string.strip()
+
+        head = "%s/refs/heads/%s" % (self.git_dir, string)
+        if os.path.isfile(head):
+            with open(head) as f:
+                return f.read().strip()
+
+        head = "%s/refs/remotes/%s" % (self.git_dir, string)
+        if os.path.isfile(head):
+            with open(head) as f:
+                return f.read().strip()
+
+        head = "%s/refs/tags/%s" % (self.git_dir, string)
+        if os.path.isfile(head):
+            with open(head) as f:
+                return f.read().strip()
+
+        # check packed-refs file, too
+        packref = "%s/packed-refs" % self.git_dir
+        if os.path.isfile(packref):
+            with open(packref) as f:
+                for line in f:
+                    m = re.match(r'^(\w{40}) refs\/.+?\/(.*?)$', line)
+                    if m:
+                        if not re.match(re.escape(string) + "$", m.group(2)):
+                            continue
+                        return m.group(1).strip()
+
+        # revert to calling git - grr
+        return self.__getattr__('rev-parse')(string, **options).strip()
+
     def fs_mkdir(self, dir):
         command = "mkdir -p %s/%s" % (self.git_dir, dir)
         self._run_command(command, self.work_tree)
 
-    def _process_encoding(self, result_dict):
-        for k in self.ENCODING_PROCESS_NEEDED:
-            result_dict[k] = result_dict[k].decode(self.LOCALE_ENCODING)
-        return result_dict
-
-    def _run_command(self, command, cwd):
+    def _run_command(self, command, cwd, raise_error=False):
         """
         TODO: try best to avoid running command thru shell
+        TODO: set a timeout for long run subprocess
         """
         logger.debug(command)
         p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, cwd=cwd)
         stdout, stderr = p.communicate()
         ret = p.returncode
-        if ret != 0:
+        if ret != 0 and raise_error:
             raise OSError("git command cannot run: %s ; reason: %s" % \
                           (command, stderr))
         return stdout, stderr
@@ -163,6 +175,10 @@ class Git:
         git binary call
         """
         # TODO: check security vunenrable problems
+        if options.has_key('raise_error'):
+            raise_error = options.get('raise_error', False)
+            options.pop('raise_error')
+
         opts = self._options_to_argv(options)
         args = " ".join(map(lambda x: str(x), args))
         command = "git %s %s %s" % (cmd.replace("_", "-"), " ".join(opts), args)
