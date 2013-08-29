@@ -41,7 +41,7 @@ class Commit(Lazy):
         self.repo = repo
         self.id = id
         self._message = "\n".join(message)
-        self._short_message = None
+        self._short_message = ''
         for line in message:
             if line:
                 self._short_message = line
@@ -256,9 +256,10 @@ class Commit(Lazy):
             lines.popleft()
 
             message_lines = list()
-            while re.match(r'^ {4}', lines[0]):
-                # TODO: locale get from ENV
-                message_lines.append(lines.popleft()[4:].decode('UTF-8'))
+            if len(lines) > 0:
+                while re.match(r'^ {4}', lines[0]):
+                    # TODO: locale get from ENV
+                    message_lines.append(lines.popleft()[4:].decode('UTF-8'))
 
             while len(lines) > 0 and lines[0] == "":
                 lines.popleft()

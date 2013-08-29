@@ -133,7 +133,9 @@ class Repo():
             Grit::Commit (baked)
         """
         options = {'max_count': 1}
-        return Commit.find_all(self, commit_id, **options)[0]
+        commits = Commit.find_all(self, commit_id, **options)
+        if len(commits) > 0:
+            return commits[0]
 
     def commits(self, start='master', max_count=10, skip=0):
         """

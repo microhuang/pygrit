@@ -67,7 +67,7 @@ class Git:
     def rev_list(self, *refs, **options):
         if not refs:
             refs = ['master']
-        if options['skip'] == 0:
+        if options.has_key('skip') and options['skip'] == 0:
             options.pop('skip')
         allowed_options = ['max_count', 'snice', 'until', 'pretty']
         if len(set(options.keys()) - set(allowed_options)) > 0 or len(refs) > 1:
