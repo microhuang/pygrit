@@ -28,10 +28,18 @@ class Diff:
         # TODO: retrieve mode from headers
         self._headers = self.raw_diff._headers
 
-        self.old_path = re.sub(r"^\-\-\- (a\/)?", "",
-                               self.raw_diff._old_path).strip()
-        self.new_path = re.sub(r"^\+\+\+ (b\/)?", "",
-                               self.raw_diff._new_path).strip()
+        # FIXME: workaround the mdiff path name
+        match = re.match(r'^diff --git "?a\/(.+?)(?<!\\)"? "?b\/(.+?)(?<!\\)"?$',
+                     self._headers[0])
+
+        if match:
+            self.old_path = match.group(1)
+            self.new_path = match.group(2)
+        else:
+            self.old_path = re.sub(r"^\-\-\- (a\/)?", "",
+                                   self.raw_diff._old_path).strip()
+            self.new_path = re.sub(r"^\+\+\+ (b\/)?", "",
+                                   self.raw_diff._new_path).strip()
 
         if self.old_path == "/dev/null":
             self.new_file = True

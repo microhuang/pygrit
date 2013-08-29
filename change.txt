@@ -1,6 +1,7 @@
 * 2013/08/29
 
   rev_list / rev_parse implemented in pure python
+  workaround cdiff / difflib._mdiff path name
 
 * 2013/08/28
 
