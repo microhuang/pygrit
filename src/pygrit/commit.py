@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 from StringIO import StringIO
 from collections import deque
 from datetime import datetime
@@ -8,6 +9,7 @@ from cdiff import PatchStream, DiffParser
 
 from pygrit import logger
 from pygrit.diff import Diff
+from pygrit.tree import Tree
 from pygrit.utils.lazy import Lazy, lazyprop
 from pygrit.utils.wrappers import cached
 
@@ -34,6 +36,9 @@ class Commit(Lazy):
             committed_timestamp: is the committed_timestamp
             committed_offset: is the committed_offset (seconds)
             message: is the message string
+
+        Returns:
+            pygrit.commit.Commit (baked)
         """
         super(Commit, self).__init__()
         self._diffs = None
@@ -55,14 +60,15 @@ class Commit(Lazy):
         self._committer_email = committer_email
         self._committed_timestamp = int(committed_timestamp)
         self._committed_offset = self._convert_offset(committed_offset)
+        self._tree = Tree.create(repo, id=tree)
 
     @lazyprop
     def parents(self):
-        return self.parents
+        return self._parents
 
     @lazyprop
     def tree(self):
-        return self.tree
+        return self._tree
 
     @lazyprop
     def author_name(self):
@@ -203,7 +209,8 @@ class Commit(Lazy):
         text_gpgless = re.sub(r'gpgsig -----BEGIN PGP SIGNATURE-----[\n\r]'
                               r'(.*[\n\r])*? -----END PGP SIGNATURE-----[\n\r]',
                               "", text)
-        lines = deque(text_gpgless.split("\n"))
+        from pygrit import logger
+        lines = deque(text_gpgless.split(b"\n"))
         commits = list()
 
         while len(lines) > 0:

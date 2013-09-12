@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 import os
 import re
 from StringIO import StringIO
@@ -11,6 +12,7 @@ from pygrit.diff import Diff
 from pygrit.errors import InvalidGitRepositoryError, NoSuchPathError
 from pygrit.git import Git
 from pygrit.ref import Head
+from pygrit.tree import Tree
 from pygrit.utils.wrappers import cached
 
 
@@ -165,6 +167,22 @@ class Repo():
             arg = [commit]
         commits = self.git.log(*arg, **options)
         return Commit.list_from_string(self, commits)
+
+    def tree(self, treeish='master', paths=list()):
+        """
+        The Tree object for the given treeish reference
+
+        Args:
+            treeish: is the reference (default 'master')
+            paths: is an optional list of directory paths to restrict the tree (default list())
+
+        Examples:
+            repo.tree('master', ['src/'])
+
+        Returns:
+            pygrit.tree.Tree (baked)
+        """
+        return Tree.construct(self, treeish, paths)
 
     def __repr__(self):
         return "<pygrit.repo.Repo %s>" % self.path

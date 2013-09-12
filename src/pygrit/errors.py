@@ -6,5 +6,5 @@ class InvalidGitRepositoryError(StandardError):
 class NoSuchPathError(StandardError):
     pass
 
-class InvalidObjectType(StandardError):
+class InvalidObjectTypeError(StandardError):
     pass

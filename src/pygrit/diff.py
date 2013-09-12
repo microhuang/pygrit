@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 import re
 from StringIO import StringIO
 
 from cdiff import PatchStream, DiffParser
-
+from pygrit import logger
 
 
 class Diff:
 
     serialize_keys = ["diff", "old_path", "new_path", "old_mode", "new_mode",
                       "new_file", "deleted_file", "renamed_file",
-                      "diff_with_lineno"]
+                      "diff_with_lineno", "binary"]
 
     def __init__(self, raw_diff):
         self.raw_diff = raw_diff
@@ -51,13 +52,21 @@ class Diff:
         self.diff += self.raw_diff._old_path
         self.diff += self.raw_diff._new_path
 
+        self.diff = self.diff.encode('UTF-8')
+
+        self.binary = False
+        for header in self._headers:
+            if header.startswith('Binary files'):
+                self.binary = True
+                break
+
         # retrieving hunk data, code snippet from
         # https://gist.github.com/aleiphoenix/6276707
         for hunk in self.raw_diff._hunks:
 
-            self.diff += hunk._hunk_meta
+            self.diff += hunk._hunk_meta.encode('UTF-8')
             self.diff_with_lineno.append(('...', '...',
-                                          hunk._hunk_meta.strip(),
+                                          hunk._hunk_meta.strip().encode('UTF-8'),
                                           'meta'))
 
             diff_start = False
@@ -71,26 +80,34 @@ class Diff:
                     diff_start = True
                     if not old[0]:
                         # new line
-                        line = new[1].strip('\x00\x01')
+                        line = new[1].strip(b'\x00\x01')
+                        if type(line) == unicode:
+                            line = line.encode('UTF-8')
                         new_lineno = new[0] + hunk._new_addr[0] - 1
                         old_lineno = ""
                         new_lines.append((old_lineno, new_lineno,
                                          line, 'new'))
                     elif not new[0]:
                         # old line
-                        line = old[1].strip('\x00\x01')
+                        line = old[1].strip(b'\x00\x01')
+                        if type(line) == unicode:
+                            line = line.encode('UTF-8')
                         new_lineno = ""
                         old_lineno = old[0] + hunk._old_addr[0] - 1
                         old_lines.append((old_lineno, new_lineno,
                                          line, 'delete'))
                     else:
                         line = "-" + self._reset_control_chars(old[1])
+                        if type(line) == unicode:
+                            line = line.encode('UTF-8')
                         new_lineno = ""
                         old_lineno = old[0] + hunk._old_addr[0] - 1
                         old_lines.append((old_lineno, new_lineno,
                                          line, 'delete'))
 
                         line = "+" + self._reset_control_chars(new[1])
+                        if type(line) == unicode:
+                            line = line.encode('UTF-8')
                         new_lineno = new[0] + hunk._new_addr[0] - 1
                         old_lineno = ""
                         new_lines.append((old_lineno, new_lineno,
@@ -98,8 +115,10 @@ class Diff:
 
                 else:
                     if diff_start:
-                        self.diff += "".join(map(lambda x: x[2], old_lines))
-                        self.diff += "".join(map(lambda x: x[2], new_lines))
+                        self.diff += self._concat_lines(map(lambda x: x[2],
+                                                            old_lines))
+                        self.diff += self._concat_lines(map(lambda x: x[2],
+                                                            new_lines))
                         self.diff_with_lineno.extend(old_lines)
                         self.diff_with_lineno.extend(new_lines)
                         old_lines = list()
@@ -108,29 +127,40 @@ class Diff:
                     old_lineno = old[0] + hunk._old_addr[0] - 1
                     new_lineno = new[0] + hunk._new_addr[0] - 1
                     line = " " + old[1]
+                    if type(line) == unicode:
+                        line = line.encode('UTF-8')
                     self.diff += line
                     self.diff_with_lineno.append((old_lineno, new_lineno,
                                                   line, 'match'))
 
             # when there is changed line only
             if diff_start:
-                self.diff += "".join(map(lambda x: x[2], old_lines))
-                self.diff += "".join(map(lambda x: x[2], new_lines))
+                self.diff += self._concat_lines(map(lambda x: x[2], old_lines))
+                self.diff += self._concat_lines(map(lambda x: x[2],
+                                                    new_lines))
                 self.diff_with_lineno.extend(old_lines)
                 self.diff_with_lineno.extend(new_lines)
                 diff_start = False
 
+    def _concat_lines(self, lines):
+        ret = b""
+        for line in lines:
+            if type(line) == unicode:
+                line = line.encode('UTF-8')
+            ret += line
+        return ret
+
     def _reset_control_chars(self, line):
-        line = line.replace('\x00-', '')
-        line = line.replace('\x00+', '')
-        line = line.replace('\x00^', '')
-        line = line.replace('\x01', '')
+        line = line.replace(b'\x00-', '')
+        line = line.replace(b'\x00+', '')
+        line = line.replace(b'\x00^', '')
+        line = line.replace(b'\x01', '')
         return line
 
     @staticmethod
     def list_from_string(raw_diff):
         """
-        convert git raw_diff format to Diff instances
+
 
         Args:
             raw_diff: is the utf-8 encoded diff raw string
