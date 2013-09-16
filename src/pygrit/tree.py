@@ -5,6 +5,7 @@ import re
 from pygrit import logger
 from pygrit.blob import Blob
 from pygrit.errors import InvalidObjectTypeError
+from pygrit.submodule import Submodule
 from pygrit.utils.lazy import Lazy, lazyprop
 
 
@@ -72,7 +73,7 @@ class Tree(Lazy):
         elif type == 'link':
             return Blob.create(repo, id=id, mode=mode, name=name)
         elif type == 'commit':
-            raise NotImplemented('Submodule not implemented yet')
+            return Submodule.create(repo, id=id, mode=mode, name=name)
         else:
             raise InvalidObjectTypeError(type)
 

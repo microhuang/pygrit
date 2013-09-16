@@ -1,3 +1,7 @@
+* 2013/09/16
+
+  add basic submodule implementation
+
 * 2013/09/11
 
   deal with unicode issue, using origin encoding internally
