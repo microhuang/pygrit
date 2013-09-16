@@ -20,6 +20,10 @@ setup(
         "cdiff==0.9.2"
     ],
 
+    dependency_links = [
+        "https://github.com/ymattw/cdiff/archive/master.zip#egg=cdiff-0.9.2",
+    ],
+
     author = "AR",
     description = ("pygrit intends to provide a minimal"
                    "python port from ruby grit."),
