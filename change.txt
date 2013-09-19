@@ -1,3 +1,7 @@
+* 2013/09/19
+
+  cache repository properties (commit) to speedup
+
 * 2013/09/16
 
   add basic submodule implementation

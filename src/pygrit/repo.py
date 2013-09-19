@@ -16,7 +16,6 @@ from pygrit.tree import Tree
 from pygrit.utils.wrappers import cached
 
 
-
 class Repo():
 
     def __init__(self, path, bare=False):
@@ -124,6 +123,7 @@ class Repo():
         if mb:
             return mb.strip()
 
+    @cached
     def commit(self, commit_id):
         """
         The Commit object for the specified id
