@@ -97,7 +97,7 @@ class Diff:
                         old_lines.append((old_lineno, new_lineno,
                                          line, 'delete'))
                     else:
-                        line = "-" + self._reset_control_chars(old[1])
+                        line = b"-" + self._reset_control_chars(old[1])
                         if type(line) == unicode:
                             line = line.encode('UTF-8')
                         new_lineno = ""
@@ -105,7 +105,7 @@ class Diff:
                         old_lines.append((old_lineno, new_lineno,
                                          line, 'delete'))
 
-                        line = "+" + self._reset_control_chars(new[1])
+                        line = b"+" + self._reset_control_chars(new[1])
                         if type(line) == unicode:
                             line = line.encode('UTF-8')
                         new_lineno = new[0] + hunk._new_addr[0] - 1
@@ -126,7 +126,7 @@ class Diff:
                         diff_start = False
                     old_lineno = old[0] + hunk._old_addr[0] - 1
                     new_lineno = new[0] + hunk._new_addr[0] - 1
-                    line = " " + old[1]
+                    line = b" " + old[1]
                     if type(line) == unicode:
                         line = line.encode('UTF-8')
                     self.diff += line
