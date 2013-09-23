@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import mimetypes
 import re
+from pygrit.ext import encode
 from pygrit.utils.wrappers import cached
 
 class Blob(object):
@@ -25,7 +26,10 @@ class Blob(object):
         blob = Blob.__new__(Blob)
         blob.repo = repo
         for k in attrs:
-            setattr(blob, k, attrs[k])
+            if k == 'name':
+                setattr(blob, 'old_name', attrs[k])
+            else:
+                setattr(blob, k, attrs[k])
         # setattr(blob, "_loaded", False)
         return blob
 
@@ -38,6 +42,10 @@ class Blob(object):
             list: [pygrit.commit.Commit, list: [<line>]]
         """
         raise NotImplementedError()
+
+    @property
+    def name(self):
+        return encode(self.old_name)
 
     @property
     def size(self):

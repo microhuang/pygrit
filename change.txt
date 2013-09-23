@@ -1,3 +1,7 @@
+* 2013/09//23
+
+  add chardet module, to fix varity message encoding issue
+
 * 2013/09/19
 
   cache repository properties (commit) to speedup

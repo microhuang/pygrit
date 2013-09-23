@@ -4,7 +4,7 @@ import re
 from StringIO import StringIO
 
 from cdiff import PatchStream, DiffParser
-from pygrit import logger
+from pygrit.ext import encode
 
 
 class Diff:
@@ -20,10 +20,23 @@ class Diff:
 
         sk = dict()
         for s in self.serialize_keys:
-            sk[s] = None
+            if s == 'new_path':
+                sk['_new_path'] = None
+            elif s == 'old_path':
+                sk['_old_path'] = None
+            else:
+                sk[s] = None
         self.__dict__.update(sk)
 
         self._init_from_raw()
+
+    @property
+    def new_path(self):
+        return encode(self._new_path.decode('string-escape'))
+
+    @property
+    def old_path(self):
+        return encode(self._old_path.decode('string-escape'))
 
     def _init_from_raw(self):
         # TODO: retrieve mode from headers
@@ -34,17 +47,17 @@ class Diff:
                      self._headers[0])
 
         if match:
-            self.old_path = match.group(1)
-            self.new_path = match.group(2)
+            self._old_path = match.group(1)
+            self._new_path = match.group(2)
         else:
-            self.old_path = re.sub(r"^\-\-\- (a\/)?", "",
+            self._old_path = re.sub(r"^\-\-\- (a\/)?", "",
                                    self.raw_diff._old_path).strip()
-            self.new_path = re.sub(r"^\+\+\+ (b\/)?", "",
+            self._new_path = re.sub(r"^\+\+\+ (b\/)?", "",
                                    self.raw_diff._new_path).strip()
 
-        if self.old_path == "/dev/null":
+        if self._old_path == "/dev/null":
             self.new_file = True
-        if self.new_path == "/dev/null":
+        if self._new_path == "/dev/null":
             self.deleted_file = True
 
         self.diff_with_lineno = list()

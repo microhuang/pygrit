@@ -181,8 +181,9 @@ class Git:
             options.pop('raise_error')
 
         opts = self._options_to_argv(options)
-        args = " ".join(map(lambda x: str(x), args))
+        args = " ".join(args)
         command = "git %s %s %s" % (cmd.replace("_", "-"), " ".join(opts), args)
+        command = command.encode('UTF-8')
 
         stdout, stderr = self._run_command(command, self.work_tree)
 

@@ -8,7 +8,9 @@ import re
 from cdiff import PatchStream, DiffParser
 
 from pygrit import logger
+from pygrit.actor import Actor
 from pygrit.diff import Diff
+from pygrit.ext import encode
 from pygrit.tree import Tree
 from pygrit.utils.lazy import Lazy, lazyprop
 from pygrit.utils.wrappers import cached
@@ -16,10 +18,9 @@ from pygrit.utils.wrappers import cached
 
 class Commit(Lazy):
 
-    def __init__(self, repo, id, parents, tree, author, author_email,
+    def __init__(self, repo, id, parents, tree, author,
                  authored_timestamp, authored_offset, committer,
-                 committer_email, committed_timestamp,committed_offset,
-                 message):
+                 committed_timestamp,committed_offset, message):
         """
         Instantiate a new Commit
 
@@ -28,11 +29,9 @@ class Commit(Lazy):
             parents: is an array of commit ids
             tree: is the correspdonding tree id
             author: is the author string
-            author_email: is the author_email string
             authored_timestamp: is the authored_timestamp
             authored_offset: is the authored_offset (seconds)
             committer: is the committer string
-            committer_email: is the committer_email string
             committed_timestamp: is the committed_timestamp
             committed_offset: is the committed_offset (seconds)
             message: is the message string
@@ -45,19 +44,17 @@ class Commit(Lazy):
 
         self.repo = repo
         self.id = id
-        self._message = "\n".join(message)
-        self._short_message = ''
+        self._old_message = b"\n".join(message)
+        self._old_short_message = b''
         for line in message:
             if line:
-                self._short_message = line
+                self._old_short_message = line
                 break
         self._parents = map(lambda id: Commit.create(repo, id=id), parents)
-        self._author_name = author
-        self._author_email = author_email
+        self._author = author
         self._authored_timestamp = int(authored_timestamp)
         self._authored_offset = self._convert_offset(authored_offset)
-        self._committer_name = committer
-        self._committer_email = committer_email
+        self._committer = committer
         self._committed_timestamp = int(committed_timestamp)
         self._committed_offset = self._convert_offset(committed_offset)
         self._tree = Tree.create(repo, id=tree)
@@ -71,12 +68,8 @@ class Commit(Lazy):
         return self._tree
 
     @lazyprop
-    def author_name(self):
-        return self._author_name
-
-    @lazyprop
-    def author_email(self):
-        return self._author_email
+    def author(self):
+        return self._author
 
     @lazyprop
     def authored_timestamp(self):
@@ -87,12 +80,8 @@ class Commit(Lazy):
         return self._authored_offset
 
     @lazyprop
-    def committer_name(self):
-        return self._committer_name
-
-    @lazyprop
-    def committer_email(self):
-        return self._committer_email
+    def committer(self):
+        return self._committer
 
     @lazyprop
     def committed_timestamp(self):
@@ -106,9 +95,17 @@ class Commit(Lazy):
     def message(self):
         return self._message
 
+    @property
+    def _message(self):
+        return encode(self._old_message)
+
     @lazyprop
     def short_message(self):
-        return self._short_message
+        return encode(self._short_message)
+
+    @property
+    def _short_message(self):
+        return encode(self._old_short_message)
 
     @property
     def authored_datetime(self):
@@ -234,22 +231,20 @@ class Commit(Lazy):
             author_line = lines.popleft()
             while not re.match(r'^committer', lines[0]):
                 author_line += lines.popleft()
-            author, author_email, \
+            author, \
                 authored_timestamp, authored_offset = Commit.actor(author_line)
 
-            # TODO: locale get from ENV
-            author = author.decode('UTF-8')
+            author = author
 
             committer_line = lines.popleft()
             while lines[0] and (not re.match(r'^encoding', lines[0])) and \
                   (not re.match(r'^encoding', lines[0])):
                 committer_line += lines.popleft()
-            committer, committer_email, \
+            committer, \
                 committed_timestamp, \
                 committed_offset = Commit.actor(committer_line)
 
-            # TODO: locale get from ENV
-            committer = committer.decode('UTF-8')
+            committer = committer
 
             # not using here though
             if re.match(r'^encoding', lines[0]):
@@ -266,14 +261,13 @@ class Commit(Lazy):
             if len(lines) > 0:
                 while re.match(r'^ {4}', lines[0]):
                     # TODO: locale get from ENV
-                    message_lines.append(lines.popleft()[4:].decode('UTF-8'))
+                    message_lines.append(lines.popleft()[4:])
 
             while len(lines) > 0 and lines[0] == "":
                 lines.popleft()
 
-            commit = Commit(repo, id, parents, tree, author, author_email,
-                            authored_timestamp, authored_offset, committer,
-                            committer_email, committed_timestamp,
+            commit = Commit(repo, id, parents, tree, author, authored_timestamp,
+                            authored_offset, committer, committed_timestamp,
                             committed_offset, message_lines)
             commits.append(commit)
 
@@ -281,9 +275,9 @@ class Commit(Lazy):
 
     @staticmethod
     def actor(line):
-        m = re.match(r'.+? (.+) \<(.+)\> (\d+) (.*)$', line)
+        m = re.match(r'.+? (.+) (\d+) (.*)$', line)
         if m:
-            return m.groups()
+            return [Actor.from_string(m.group(1)), m.group(2), m.group(3)]
 
     def _convert_offset(self, offset):
         """
@@ -303,4 +297,4 @@ class Commit(Lazy):
         return hours * 60 + mins
 
     def __repr__(self):
-        return "<pygrit.commit.Commit %s>" % self.id
+        return "#<pygrit.commit.Commit \"%s\">" % self.id

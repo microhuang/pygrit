@@ -17,6 +17,7 @@ setup(
     entry_points = {},
 
     install_requires = [
+        "chardet==2.1.1",
         "cdiff==0.9.2"
     ],
 

@@ -5,6 +5,7 @@ import re
 from pygrit import logger
 from pygrit.blob import Blob
 from pygrit.errors import InvalidObjectTypeError
+from pygrit.ext import encode
 from pygrit.submodule import Submodule
 from pygrit.utils.lazy import Lazy, lazyprop
 
@@ -14,18 +15,25 @@ class Tree(Lazy):
     def __init__(self):
         super(Tree, self).__init__()
 
+    @property
+    def name(self):
+        return encode(self.old_name)
 
     @staticmethod
     def create(repo, **attrs):
         tree = Tree.__new__(Tree)
         tree.repo = repo
         for k in attrs:
-            setattr(tree, k, attrs[k])
+            if k == 'name':
+                setattr(tree, 'old_name', attrs[k])
+            else:
+                setattr(tree, k, attrs[k])
         setattr(tree, "_loaded", False)
         return tree
 
     @staticmethod
     def construct(repo, treeish, paths=list()):
+        # TODO: consider implement `git ls-tree` in pure python ?
         output = repo.git.ls_tree(treeish, *paths, raise_error=True)
         tree = Tree.__new__(Tree)
         tree.construct_initialize(repo, treeish, output)
@@ -36,13 +44,13 @@ class Tree(Lazy):
         self.id = id
         self._contents = list()
 
-        for line in text.split("\n"):
+        for line in text.split(b"\n"):
             if line.strip():
-                self._contents.append(self.content_from_string(repo,
-                                                              line.strip()))
+                _ = self.content_from_string(repo, line.strip())
+                self._contents.append(_)
 
         for i in range(self._contents.count(None)):
-            i.remove(None)
+            self._contents.remove(None)
 
         return self
 
@@ -64,18 +72,19 @@ class Tree(Lazy):
         Returns:
             pygrit.blob.Blob or pygrit.tree.Tree
         """
-        _ = re.split(r'[\ \t]', text, 4)
-        mode, type, id, name = _
-        if type == 'tree':
+        _ = re.split(r'[\ \t]', text, 3) # 4 parts at most
+        mode, ftype, id, name = _
+        name = name.decode('string-escape').strip(b'"')
+        if ftype == 'tree':
             return Tree.create(repo, id=id, mode=mode, name=name)
-        elif type == 'blob':
+        elif ftype == 'blob':
             return Blob.create(repo, id=id, mode=mode, name=name)
-        elif type == 'link':
+        elif ftype == 'link':
             return Blob.create(repo, id=id, mode=mode, name=name)
-        elif type == 'commit':
+        elif ftype == 'commit':
             return Submodule.create(repo, id=id, mode=mode, name=name)
         else:
-            raise InvalidObjectTypeError(type)
+            raise InvalidObjectTypeError(ftype)
 
     def find(self, file):
         """
