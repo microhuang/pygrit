@@ -164,10 +164,10 @@ class Diff:
         return ret
 
     def _reset_control_chars(self, line):
-        line = line.replace(b'\x00-', '')
-        line = line.replace(b'\x00+', '')
-        line = line.replace(b'\x00^', '')
-        line = line.replace(b'\x01', '')
+        line = line.replace(b'\x00-', b'')
+        line = line.replace(b'\x00+', b'')
+        line = line.replace(b'\x00^', b'')
+        line = line.replace(b'\x01', b'')
         return line
 
     @staticmethod
