@@ -25,11 +25,13 @@ class Actor(object):
 
     @staticmethod
     def from_string(string):
-        if re.search(r'<.+>', string):
-            m = re.match(r'(.*) <(.+?)>', string)
+        if re.search(r'<.*>', string):
+            from pygrit import logger
+            logger.debug(string)
+            m = re.match(r'(.*) <(.*)>', string)
             if m:
                 name = m.group(1)
                 email = m.group(2)
                 return Actor(name, email)
             else:
-                return Actor(name)
+                return Actor('')

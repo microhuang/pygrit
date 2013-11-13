@@ -234,8 +234,6 @@ class Commit(Lazy):
             author, \
                 authored_timestamp, authored_offset = Commit.actor(author_line)
 
-            author = author
-
             committer_line = lines.popleft()
             while lines[0] and (not re.match(r'^encoding', lines[0])) and \
                   (not re.match(r'^encoding', lines[0])):
