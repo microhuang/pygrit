@@ -1,4 +1,8 @@
-* 2013/09//23
+* 2014/01/09
+
+  add timeout to shell command
+
+* 2013/09/23
 
   add chardet module, to fix varity message encoding issue
 

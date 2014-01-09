@@ -8,3 +8,6 @@ class NoSuchPathError(StandardError):
 
 class InvalidObjectTypeError(StandardError):
     pass
+
+class GitTimeout(RuntimeError):
+    pass

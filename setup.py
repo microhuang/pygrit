@@ -18,11 +18,7 @@ setup(
 
     install_requires = [
         "chardet==2.1.1",
-        "cdiff==0.9.2"
-    ],
-
-    dependency_links = [
-        "https://github.com/ymattw/cdiff/archive/master.zip#egg=cdiff-0.9.2",
+        "cdiff==0.9.3"
     ],
 
     author = "AR",

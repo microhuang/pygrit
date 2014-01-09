@@ -4,10 +4,17 @@ from __future__ import unicode_literals
 import os
 import re
 import subprocess
+from time import sleep
 from glob import glob
 
 from pygrit import logger
+from pygrit.errors import GitTimeout
 from pygrit.utils.wrappers import deprecated, should_in_git_python
+
+
+
+TIMEOUT  = 10
+INTERVAL = 0.1
 
 #
 # class to interactive with `git` binary
@@ -132,14 +139,29 @@ class Git:
         command = "mkdir -p %s/%s" % (self.git_dir, dir)
         self._run_command(command, self.work_tree)
 
-    def _run_command(self, command, cwd, raise_error=False):
+    def _run_command(self, command, cwd, timeout=TIMEOUT, raise_error=False):
         """
         TODO: try best to avoid running command thru shell
-        TODO: set a timeout for long run subprocess
         """
         logger.debug(command)
         p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, cwd=cwd)
+        if timeout:
+            slept = 0
+            while True:
+                if p.poll() is None:
+                    if slept > timeout:
+                        try:
+                            p.kill()
+                        except ProcessLookupError:
+                            pass
+                        raise GitTimeout("cwd: {}, command: {}"\
+                                         .format(cwd, command))
+                    sleep(INTERVAL)
+                    slept += INTERVAL
+                else:
+                    break
+
         stdout, stderr = p.communicate()
         ret = p.returncode
         if ret != 0 and raise_error:
