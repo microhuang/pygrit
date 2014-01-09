@@ -3,4 +3,4 @@
 
 *~
 
-src/pygrit.egg-info
+*.egg-info

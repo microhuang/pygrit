@@ -9,20 +9,17 @@ with open(version) as v:
 
 setup(
     name = "pygrit",
+    description = ("pygrit intends to provide a minimal"
+                   "python port from ruby grit."),
     version = VERSION,
-
-    package_dir = {"": "src"},
-    packages = find_packages("src"),
-
-    entry_points = {},
-
+    url = "https://github.com/aleiphoenix/pygrit",
+    author = "AR",
+    author_email = "aleiphoenix@gmail.com",
+    packages = ['pygrit'],
+    platforms = 'any',
     install_requires = [
         "chardet==2.1.1",
         "cdiff==0.9.3"
     ],
-
-    author = "AR",
-    description = ("pygrit intends to provide a minimal"
-                   "python port from ruby grit."),
-    url = "https://github.com/aleiphoenix/pygrit"
+    entry_points = {}
 )
