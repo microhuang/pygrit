@@ -15,7 +15,8 @@ setup(
     url = "https://github.com/aleiphoenix/pygrit",
     author = "AR",
     author_email = "aleiphoenix@gmail.com",
-    packages = ['pygrit'],
+    packages = ['pygrit', 'pygrit.utils'],
+    include_package_data=True,
     platforms = 'any',
     install_requires = [
         "chardet==2.1.1",
