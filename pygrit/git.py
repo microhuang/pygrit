@@ -11,15 +11,13 @@ from pygrit import logger
 from pygrit.errors import GitTimeout
 from pygrit.utils.wrappers import deprecated, should_in_git_python
 
-
-
-TIMEOUT  = 10
-INTERVAL = 0.1
-
 #
 # class to interactive with `git` binary
 #
 class Git:
+
+    TIMEOUT  = 10
+    INTERVAL = 0.1
 
     def __init__(self, git_dir):
         self.git_dir = git_dir
@@ -139,13 +137,17 @@ class Git:
         command = "mkdir -p %s/%s" % (self.git_dir, dir)
         self._run_command(command, self.work_tree)
 
-    def _run_command(self, command, cwd, timeout=TIMEOUT, raise_error=False):
+    def _run_command(self, command, cwd, raise_error=False):
         """
         TODO: try best to avoid running command thru shell
         """
         logger.debug(command)
         p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, cwd=cwd)
+
+        timeout = self.TIMEOUT
+        interval = self.INTERVAL
+
         if timeout:
             slept = 0
             while True:
@@ -157,8 +159,8 @@ class Git:
                             pass
                         raise GitTimeout("cwd: {}, command: {}"\
                                          .format(cwd, command))
-                    sleep(INTERVAL)
-                    slept += INTERVAL
+                    sleep(interval)
+                    slept += interval
                 else:
                     break
 
