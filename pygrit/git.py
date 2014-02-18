@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from glob import glob
 import os
 import re
 import subprocess
+from tempfile import TemporaryFile
 from time import sleep
-from glob import glob
 
 from pygrit import logger
 from pygrit.errors import GitTimeout
 from pygrit.utils.wrappers import deprecated, should_in_git_python
+
 
 #
 # class to interactive with `git` binary
@@ -141,9 +143,11 @@ class Git:
         """
         TODO: try best to avoid running command thru shell
         """
-        logger.debug(command)
-        p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, cwd=cwd)
+        logger.debug('cwd: {}, command: {}'.format(cwd, command))
+        stdout = TemporaryFile()
+        stderr = TemporaryFile()
+        p = subprocess.Popen(command, shell=True, stdout=stdout,
+                             stderr=stderr, cwd=cwd)
 
         timeout = self.TIMEOUT
         interval = self.INTERVAL
@@ -164,12 +168,14 @@ class Git:
                 else:
                     break
 
-        stdout, stderr = p.communicate()
+        p.communicate()
         ret = p.returncode
         if ret != 0 and raise_error:
             raise OSError("git command cannot run: %s ; reason: %s" % \
                           (command, stderr))
-        return stdout, stderr
+        stdout.seek(0)
+        stderr.seek(0)
+        return stdout.read(), stderr.read()
 
     def _options_to_argv(self, options):
         argv = list()
