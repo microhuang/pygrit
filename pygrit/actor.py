@@ -16,19 +16,32 @@ class Actor(object):
         return encode(self._name)
 
     def output(self, time):
-        raise NotImplementedError()
+        """Outpus an actor string for Git commits.
+
+            actor = Actor('bob', 'bob@email.com')
+            actor.output(time) # => "bob <bob@email.com> UNIX_TIME +0800"
+
+        Args:
+            +time The Time the commit was authored or committed
+
+        Returns:
+            a string
+        """
+        return "{} <{}> {} {}".format(self.name, self.email or "null",
+                                      time.strftime("%s"), "0000")
 
     def __repr__(self):
-        # cannot return unicode in repr function, WTF..
-        return "#<pygrit.actor.Actor \"%s <%s>\">" %\
-            (repr(self.name), self.email)
+        return '#<pygrit.Actor "{} <{}>">'.format(self.name, self.email)
+
+    def __str__(self):
+        return self.name
 
     @staticmethod
     def from_string(string):
         if re.search(r'<.*>', string):
             from pygrit import logger
             logger.debug(string)
-            m = re.match(r'(.*) <(.*)>', string)
+            m = re.match(r'(.*) <(.+?)>', string)
             if m:
                 name = m.group(1)
                 email = m.group(2)
