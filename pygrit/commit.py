@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-from StringIO import StringIO
+from io import StringIO
 from collections import deque
 from datetime import datetime
 import re
