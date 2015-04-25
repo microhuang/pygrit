@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 import os
 import re
-from StringIO import StringIO
+from io import StringIO
 
 from cdiff import PatchStream, DiffParser
 
