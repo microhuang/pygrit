@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-class InvalidGitRepositoryError(StandardError):
+class InvalidGitRepositoryError(BaseException):
     pass
 
-class NoSuchPathError(StandardError):
+class NoSuchPathError(BaseException):
     pass
 
-class InvalidObjectTypeError(StandardError):
+class InvalidObjectTypeError(BaseException):
     pass
 
 class GitTimeout(RuntimeError):
