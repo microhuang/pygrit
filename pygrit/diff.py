@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import re
-from StringIO import StringIO
+from io import StringIO
 
 from cdiff import PatchStream, DiffParser
 from pygrit.ext import encode
